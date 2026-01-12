@@ -1,0 +1,458 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useChatStore } from '@/lib/store'
+import { respond, apiClient } from '@/lib/api'
+import { useThemeStore } from '@/lib/theme-store'
+import { useChatHistoryStore } from '@/lib/chat-history'
+import ReminderList from './ReminderList'
+import ChatHistoryPanel from './ChatHistoryPanel'
+import ExportMenu from './ExportMenu'
+import { useAuth, UserButton } from '@clerk/nextjs'
+import { requestNotificationPermission, checkAndNotifyReminders } from '@/lib/notifications'
+import { startSpeechRecognition, stopSpeechRecognition, speakText, stopSpeech, isSpeaking } from '@/lib/voice'
+
+interface Reminder {
+  id: number
+  title: string
+  reminder_time: string
+}
+
+export default function VirtualAssistant() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { messages, addMessage, loading, setLoading, recruiterMode, setRecruiterMode } = useChatStore()
+  const { isDark, toggleTheme } = useThemeStore()
+  const { sessions, addSession, updateSession, currentSessionId, setCurrentSession, loadFromStorage } = useChatHistoryStore()
+  
+  const [input, setInput] = useState('')
+  const [showReminders, setShowReminders] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+  const [reminders, setReminders] = useState<Reminder[]>([])
+  const [isListening, setIsListening] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [assistantAnimating, setAssistantAnimating] = useState(false)
+  const recognitionRef = useRef<any>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  useEffect(() => {
+    requestNotificationPermission()
+    loadFromStorage()
+  }, [loadFromStorage])
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await apiClient.get('/api/reminders')
+        setReminders(response.data)
+        checkAndNotifyReminders(response.data)
+      } catch (error) {
+        console.error('Error fetching reminders:', error)
+      }
+    }, 60000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleMicClick = () => {
+    if (isListening) {
+      stopSpeechRecognition()
+      setIsListening(false)
+    } else {
+      setIsListening(true)
+      startSpeechRecognition(
+        (transcript) => {
+          setInput(transcript)
+          setIsListening(false)
+        },
+        (error) => {
+          console.error('Speech recognition error:', error)
+          setIsListening(false)
+        }
+      )
+    }
+  }
+
+  const handleSpeakMessage = (text: string) => {
+    if (isSpeaking) {
+      stopSpeech()
+      setIsSpeaking(false)
+    } else {
+      setIsSpeaking(true)
+      setAssistantAnimating(true)
+      speakText(text, () => {
+        setIsSpeaking(false)
+        setAssistantAnimating(false)
+      })
+    }
+  }
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim()) return
+
+    const userMessage = input
+    setInput('')
+    addMessage({ role: 'user', content: userMessage })
+    setLoading(true)
+
+    try {
+      const response = await respond(userMessage, recruiterMode)
+      addMessage({
+        role: 'assistant',
+        content: response.reply,
+      })
+
+      // Update session
+      if (currentSessionId) {
+        const session = sessions.find(s => s.id === currentSessionId)
+        if (session) {
+          updateSession(currentSessionId, {
+            ...session,
+            lastUpdated: new Date().toISOString(),
+            messageCount: (session.messageCount || 0) + 2,
+          })
+        }
+      }
+
+      // Auto-speak the response
+      setTimeout(() => {
+        setIsSpeaking(true)
+        setAssistantAnimating(true)
+        speakText(response.reply, () => {
+          setIsSpeaking(false)
+          setAssistantAnimating(false)
+        })
+      }, 500)
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleNewChat = () => {
+    const newSession = {
+      id: Date.now().toString(),
+      title: 'New Chat',
+      createdAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+      messageCount: 0,
+    }
+    addSession(newSession)
+    setCurrentSession(newSession.id)
+    useChatStore.setState({ messages: [] })
+  }
+
+  const handleSelectSession = async (sessionId: string) => {
+    setCurrentSession(sessionId)
+    // Load session messages
+    const session = sessions.find(s => s.id === sessionId)
+    if (session) {
+      // This would load messages from localStorage based on session
+      console.log('Loading session:', session.title)
+    }
+  }
+
+  const filteredMessages = messages.filter(m =>
+    m.content.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  return (
+    <div className={`h-screen flex flex-col ${isDark ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Header Bar */}
+      <div className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b px-6 py-4 shadow`}>
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+                isDark
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
+            >
+              📚 {showHistory ? 'Hide' : 'History'}
+            </button>
+            <button
+              onClick={handleNewChat}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+                isDark
+                  ? 'bg-blue-700 hover:bg-blue-600 text-white'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+            >
+              ➕ New Chat
+            </button>
+          </div>
+
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Virtual Assistant</h1>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+                isDark
+                  ? 'bg-yellow-700 hover:bg-yellow-600 text-white'
+                  : 'bg-gray-700 hover:bg-gray-800 text-white'
+              }`}
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
+
+            {/* Career Tools Link */}
+            <button
+              onClick={() => router.push('/recruitment')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+                isDark
+                  ? 'bg-blue-700 hover:bg-blue-600 text-white'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+            >
+              🧰 Career Tools
+            </button>
+
+            <button
+              onClick={() => setShowExport(true)}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+                isDark
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
+            >
+              💾 Export
+            </button>
+
+            <button
+              onClick={() => setShowReminders(!showReminders)}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+                isDark
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
+            >
+              📋 Reminders
+            </button>
+
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+              isDark ? 'bg-gray-700' : 'bg-gray-200'
+            }`}>
+              <label className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>Recruiter:</label>
+              <button
+                onClick={() => setRecruiterMode(!recruiterMode)}
+                className={`px-3 py-1 rounded-lg font-semibold text-sm transition ${
+                  recruiterMode
+                    ? 'bg-green-500 text-white'
+                    : isDark ? 'bg-gray-600 text-white' : 'bg-gray-400 text-white'
+                }`}
+              >
+                {recruiterMode ? 'ON' : 'OFF'}
+              </button>
+            </div>
+
+            <UserButton afterSignOutUrl="/sign-in" />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Chat History Sidebar */}
+        {showHistory && (
+          <ChatHistoryPanel
+            onSelectSession={handleSelectSession}
+            currentSessionId={currentSessionId}
+          />
+        )}
+
+        {/* Center Assistant Area */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto">
+          <div className="max-w-2xl w-full h-full flex flex-col items-center justify-center">
+            {/* Virtual Assistant Avatar */}
+            <div className="mb-12">
+              <div
+                className={`relative w-40 h-40 rounded-full transition-all duration-300 ${
+                  assistantAnimating || isSpeaking
+                    ? 'shadow-2xl shadow-blue-500 scale-110'
+                    : isDark
+                    ? 'shadow-xl shadow-gray-800'
+                    : 'shadow-xl shadow-gray-300'
+                } ${isDark ? 'bg-gradient-to-br from-blue-600 to-blue-800' : 'bg-gradient-to-br from-blue-400 to-blue-600'}`}
+              >
+                {/* Eyes */}
+                <div className="absolute top-12 left-10 w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                  <div
+                    className={`w-3 h-3 bg-black rounded-full transition-transform duration-200 ${
+                      assistantAnimating ? 'animate-pulse' : ''
+                    }`}
+                  ></div>
+                </div>
+                <div className="absolute top-12 right-10 w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                  <div
+                    className={`w-3 h-3 bg-black rounded-full transition-transform duration-200 ${
+                      assistantAnimating ? 'animate-pulse' : ''
+                    }`}
+                  ></div>
+                </div>
+
+                {/* Mouth */}
+                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2">
+                  {isSpeaking ? (
+                    <div className="flex gap-1">
+                      <div
+                        className="w-2 h-6 bg-white rounded-full animate-bounce"
+                        style={{ animationDelay: '0s' }}
+                      ></div>
+                      <div
+                        className="w-2 h-6 bg-white rounded-full animate-bounce"
+                        style={{ animationDelay: '0.2s' }}
+                      ></div>
+                      <div
+                        className="w-2 h-6 bg-white rounded-full animate-bounce"
+                        style={{ animationDelay: '0.4s' }}
+                      ></div>
+                    </div>
+                  ) : (
+                    <div className="w-12 h-2 bg-white rounded-full"></div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Text */}
+              <div className="text-center mt-6">
+                <h2 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Hi, I'm Your Assistant
+                </h2>
+                <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {isListening
+                    ? '🎤 Listening...'
+                    : isSpeaking
+                    ? '💬 Speaking...'
+                    : 'Ready to help!'}
+                </p>
+              </div>
+            </div>
+
+            {/* Conversation Display */}
+            {messages.length > 0 && (
+              <div className={`w-full mt-8 p-6 rounded-xl ${
+                isDark ? 'bg-gray-800' : 'bg-white'
+              } shadow-lg max-h-64 overflow-y-auto`}>
+                <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Conversation
+                </h3>
+                <div className="space-y-4">
+                  {filteredMessages.slice(-5).map((message, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-lg ${
+                        message.role === 'user'
+                          ? isDark
+                            ? 'bg-blue-900 text-white ml-8'
+                            : 'bg-blue-100 text-gray-900 ml-8'
+                          : isDark
+                          ? 'bg-gray-700 text-white mr-8'
+                          : 'bg-gray-100 text-gray-900 mr-8'
+                      }`}
+                    >
+                      <p className="text-sm">
+                        {message.role === 'user' ? '👤 You' : '🤖 Assistant'}: {message.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Voice Input Controls */}
+            <div className="mt-12 flex gap-4">
+              <button
+                onClick={handleMicClick}
+                disabled={loading}
+                className={`px-8 py-4 rounded-full font-bold text-lg transition transform ${
+                  isListening
+                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse scale-110'
+                    : isDark
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white'
+                } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl`}
+              >
+                {isListening ? '🎤 Listening' : '🎤 Tap to Speak'}
+              </button>
+
+              {isSpeaking && (
+                <button
+                  onClick={() => {
+                    stopSpeech()
+                    setIsSpeaking(false)
+                    setAssistantAnimating(false)
+                  }}
+                  className="px-8 py-4 rounded-full font-bold text-lg bg-red-500 hover:bg-red-600 text-white transition transform shadow-lg"
+                >
+                  ⏸️ Stop
+                </button>
+              )}
+            </div>
+
+            {/* Text Input as Backup */}
+            <form onSubmit={handleSendMessage} className="mt-8 w-full max-w-xl">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Or type your message here..."
+                  disabled={loading}
+                  className={`flex-1 px-6 py-3 rounded-full focus:outline-none focus:ring-2 transition ${
+                    isDark
+                      ? 'bg-gray-700 text-white placeholder-gray-400 focus:ring-blue-500 disabled:opacity-50'
+                      : 'bg-gray-100 text-gray-900 placeholder-gray-500 focus:ring-blue-400 disabled:opacity-50'
+                  }`}
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="px-6 py-3 rounded-full font-bold bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg"
+                >
+                  Send
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Reminders Sidebar */}
+        {showReminders && (
+          <div className={`w-80 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-l shadow-lg overflow-y-auto`}>
+            <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
+              <h2 className={`font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>Reminders</h2>
+              <button
+                onClick={() => setShowReminders(false)}
+                className={`${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                ✕
+              </button>
+            </div>
+            <ReminderList />
+          </div>
+        )}
+      </div>
+
+      {/* Export Modal */}
+      {showExport && (
+        <ExportMenu messages={messages} onClose={() => setShowExport(false)} />
+      )}
+    </div>
+  )
+}
