@@ -170,27 +170,34 @@ export default function VirtualAssistant() {
   )
 
   return (
-    <div className={`h-screen flex flex-col ${isDark ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`h-screen flex flex-col relative overflow-hidden ${isDark ? 'dark' : ''}`}>
+      {/* Animated Background */}
+      <div className={`absolute inset-0 -z-10 ${isDark ? 'bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900' : 'bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400'}`}>
+        <div className={`absolute inset-0 opacity-30 ${isDark ? 'bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.3),transparent_50%)]' : 'bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]'}`}></div>
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+      </div>
       {/* Header Bar */}
-      <div className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b px-6 py-4 shadow`}>
+      <div className={`${isDark ? 'bg-gray-800/80 backdrop-blur-xl border-gray-700/50' : 'bg-white/80 backdrop-blur-xl border-gray-200/50'} border-b px-6 py-4 shadow-lg`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 transform hover:scale-105 ${
                 isDark
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  ? 'bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white shadow-lg'
+                  : 'bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 shadow-md'
               }`}
             >
               📚 {showHistory ? 'Hide' : 'History'}
             </button>
             <button
               onClick={handleNewChat}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 transform hover:scale-105 shadow-lg ${
                 isDark
-                  ? 'bg-blue-700 hover:bg-blue-600 text-white'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white'
+                  : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'
               }`}
             >
               ➕ New Chat
@@ -202,10 +209,10 @@ export default function VirtualAssistant() {
           <div className="flex items-center gap-4">
             <button
               onClick={toggleTheme}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 transform hover:scale-110 hover:rotate-12 shadow-lg ${
                 isDark
-                  ? 'bg-yellow-700 hover:bg-yellow-600 text-white'
-                  : 'bg-gray-700 hover:bg-gray-800 text-white'
+                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white'
+                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white'
               }`}
             >
               {isDark ? '☀️' : '🌙'}
@@ -214,10 +221,10 @@ export default function VirtualAssistant() {
             {/* Career Tools Link */}
             <button
               onClick={() => router.push('/recruitment')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 transform hover:scale-105 shadow-lg ${
                 isDark
-                  ? 'bg-blue-700 hover:bg-blue-600 text-white'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
               }`}
             >
               🧰 Career Tools
@@ -225,10 +232,10 @@ export default function VirtualAssistant() {
 
             <button
               onClick={() => setShowExport(true)}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 transform hover:scale-105 shadow-md ${
                 isDark
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  ? 'bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white'
+                  : 'bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800'
               }`}
             >
               💾 Export
@@ -282,49 +289,49 @@ export default function VirtualAssistant() {
             {/* Virtual Assistant Avatar */}
             <div className="mb-12">
               <div
-                className={`relative w-40 h-40 rounded-full transition-all duration-300 ${
+                className={`relative w-48 h-48 rounded-full transition-all duration-500 ${
                   assistantAnimating || isSpeaking
-                    ? 'shadow-2xl shadow-blue-500 scale-110'
+                    ? 'shadow-2xl shadow-blue-500/50 scale-110 ring-4 ring-blue-400/30'
                     : isDark
-                    ? 'shadow-xl shadow-gray-800'
-                    : 'shadow-xl shadow-gray-300'
-                } ${isDark ? 'bg-gradient-to-br from-blue-600 to-blue-800' : 'bg-gradient-to-br from-blue-400 to-blue-600'}`}
+                    ? 'shadow-2xl shadow-blue-900/50'
+                    : 'shadow-2xl shadow-blue-400/30'
+                } ${isDark ? 'bg-gradient-to-br from-blue-500 via-purple-600 to-pink-600' : 'bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500'}`}
               >
                 {/* Eyes */}
-                <div className="absolute top-12 left-10 w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                <div className="absolute top-14 left-12 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
                   <div
-                    className={`w-3 h-3 bg-black rounded-full transition-transform duration-200 ${
+                    className={`w-4 h-4 bg-gradient-to-br from-gray-800 to-black rounded-full transition-transform duration-200 ${
                       assistantAnimating ? 'animate-pulse' : ''
                     }`}
                   ></div>
                 </div>
-                <div className="absolute top-12 right-10 w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                <div className="absolute top-14 right-12 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
                   <div
-                    className={`w-3 h-3 bg-black rounded-full transition-transform duration-200 ${
+                    className={`w-4 h-4 bg-gradient-to-br from-gray-800 to-black rounded-full transition-transform duration-200 ${
                       assistantAnimating ? 'animate-pulse' : ''
                     }`}
                   ></div>
                 </div>
 
                 {/* Mouth */}
-                <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2">
+                <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2">
                   {isSpeaking ? (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
                       <div
-                        className="w-2 h-6 bg-white rounded-full animate-bounce"
+                        className="w-3 h-8 bg-gradient-to-t from-white to-gray-100 rounded-full animate-bounce shadow-md"
                         style={{ animationDelay: '0s' }}
                       ></div>
                       <div
-                        className="w-2 h-6 bg-white rounded-full animate-bounce"
-                        style={{ animationDelay: '0.2s' }}
+                        className="w-3 h-8 bg-gradient-to-t from-white to-gray-100 rounded-full animate-bounce shadow-md"
+                        style={{ animationDelay: '0.15s' }}
                       ></div>
                       <div
-                        className="w-2 h-6 bg-white rounded-full animate-bounce"
-                        style={{ animationDelay: '0.4s' }}
+                        className="w-3 h-8 bg-gradient-to-t from-white to-gray-100 rounded-full animate-bounce shadow-md"
+                        style={{ animationDelay: '0.3s' }}
                       ></div>
                     </div>
                   ) : (
-                    <div className="w-12 h-2 bg-white rounded-full"></div>
+                    <div className="w-14 h-3 bg-gradient-to-r from-white via-gray-100 to-white rounded-full shadow-md"></div>
                   )}
                 </div>
               </div>
@@ -346,9 +353,9 @@ export default function VirtualAssistant() {
 
             {/* Conversation Display */}
             {messages.length > 0 && (
-              <div className={`w-full mt-8 p-6 rounded-xl ${
-                isDark ? 'bg-gray-800' : 'bg-white'
-              } shadow-lg max-h-64 overflow-y-auto`}>
+              <div className={`w-full mt-8 p-6 rounded-2xl ${
+                isDark ? 'bg-gray-800/80 backdrop-blur-xl border border-gray-700/50' : 'bg-white/80 backdrop-blur-xl border border-gray-200/50'
+              } shadow-2xl max-h-64 overflow-y-auto`}>
                 <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   Conversation
                 </h3>
@@ -356,14 +363,14 @@ export default function VirtualAssistant() {
                   {filteredMessages.slice(-5).map((message, index) => (
                     <div
                       key={index}
-                      className={`p-3 rounded-lg ${
+                      className={`p-4 rounded-xl transition-all duration-300 hover:scale-[1.02] ${
                         message.role === 'user'
                           ? isDark
-                            ? 'bg-blue-900 text-white ml-8'
-                            : 'bg-blue-100 text-gray-900 ml-8'
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white ml-8 shadow-lg'
+                            : 'bg-gradient-to-r from-blue-100 to-purple-100 text-gray-900 ml-8 shadow-md'
                           : isDark
-                          ? 'bg-gray-700 text-white mr-8'
-                          : 'bg-gray-100 text-gray-900 mr-8'
+                          ? 'bg-gradient-to-r from-gray-700 to-gray-600 text-white mr-8 shadow-lg'
+                          : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 mr-8 shadow-md'
                       }`}
                     >
                       <p className="text-sm">
@@ -380,13 +387,13 @@ export default function VirtualAssistant() {
               <button
                 onClick={handleMicClick}
                 disabled={loading}
-                className={`px-8 py-4 rounded-full font-bold text-lg transition transform ${
+                className={`px-10 py-5 rounded-full font-bold text-xl transition-all duration-300 transform hover:scale-110 ${
                   isListening
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse scale-110'
+                    ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white animate-pulse scale-110 shadow-2xl shadow-red-500/50'
                     : isDark
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white'
-                    : 'bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white'
-                } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl`}
+                    ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-2xl shadow-purple-500/30'
+                    : 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-2xl shadow-purple-400/30'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {isListening ? '🎤 Listening' : '🎤 Tap to Speak'}
               </button>
@@ -398,7 +405,7 @@ export default function VirtualAssistant() {
                     setIsSpeaking(false)
                     setAssistantAnimating(false)
                   }}
-                  className="px-8 py-4 rounded-full font-bold text-lg bg-red-500 hover:bg-red-600 text-white transition transform shadow-lg"
+                  className="px-10 py-5 rounded-full font-bold text-xl bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white transition-all duration-300 transform hover:scale-110 shadow-2xl shadow-red-500/30"
                 >
                   ⏸️ Stop
                 </button>
